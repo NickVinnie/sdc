@@ -52,6 +52,7 @@ const productQuery = (id) => {
 
 const photosQuery = (styleId) => {
   return new Promise ((resolve, reject) => {
+    console.log('hello')
     pool.query(`SELECT * FROM photos WHERE styleId = ${styleId}`, [], (err, res) => {
       if (err) {
         reject(err);
@@ -160,10 +161,10 @@ app.get('/products/:id', (req, res) => {
   productQuery(id)
     .then(products => {
       res.send(products);
+      res.sendStatus(200);
     })
     .catch(err => {
       res.send(err);
-      console.log(err);
     })
 })
 
@@ -179,15 +180,16 @@ app.get('/products/:id/styles', (req, res) => {
         .then(stylesResults => {
           stylesObj.results = stylesResults
           res.send(stylesObj);
+          res.sendStatus(200);
         })
         .catch(err => {
           res.send(err);
-          console.log(err);
+          res.sendStatus(404);
         })
     })
     .catch(err => {
       res.send(err);
-      console.log(err);
+      res.sendStatus(404);
     })
 })
 
@@ -197,18 +199,17 @@ app.get('/products/:id/related', (req,res) => {
   relatedQuery(id)
     .then(relateds => {
       related = [];
-      relateds.forEach(related => {
-        related.push(related.related_product_id);
+      relateds.forEach(relatedObj => {
+        related.push(relatedObj.related_product_id);
       });
       res.send(related);
+      res.sendStatus(200);
     })
     .catch(err => {
       res.send(err);
-      console.log(err);
+      res.sendStatus(404);
     })
 })
-
-
 
 app.listen(port, () => {
   console.log(`listening on port ${port}`);
