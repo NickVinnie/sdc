@@ -15,36 +15,28 @@ pool.connect((err) => {
 
 //DATABASE QUERIES
 
-const featuresQuery = (id) => {
-  return new Promise ((resolve, reject) => {
-    pool.query(`SELECT * FROM features WHERE product_id = ${id}`, [], (err, res) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(res.rows);
-      }
-    })
-  })
-}
-
 const productQuery = (id) => {
   return new Promise ((resolve, reject) => {
-    pool.query(`SELECT * FROM product WHERE id = ${id}`, [], (err, res) => {
+    pool.query(`SELECT * FROM product, features WHERE product.id = features.product_id AND features.product_id = ${id}`, [], (err, res) => {
       if (err) {
         reject(err);
       } else {
-        let infoObj = res.rows[0];
-        featuresQuery(id)
-          .then(features => {
-            infoObj.features = [];
-            features.forEach(feature => {
-              infoObj.features.push({
-                feature: feature.feature,
-                value: feature.value
-              })
-            })
-            resolve(infoObj)
+        infoObj = {
+          id: res.rows[0].product_id,
+          name: res.rows[0].name,
+          slogan: res.rows[0].slogan,
+          description: res.rows[0].description,
+          category: res.rows[0].category,
+          default_price: res.rows[0].default_price,
+          features: []
+        }
+        res.rows.forEach(feature => {
+          infoObj.features.push({
+            feature: feature.feature,
+            value: feature.value
           })
+        })
+        resolve(infoObj);
       }
     })
   })
@@ -161,9 +153,9 @@ const stylesObjectCreator = (stylesArray) => {
 app.get('/products/:id', (req, res) => {
   const { id } = req.params;
   productQuery(id)
-    .then(products => {
+    .then(product => {
       res.status(200);
-      res.send(products);
+      res.send(product);
     })
     .catch(err => {
       res.status(404);
