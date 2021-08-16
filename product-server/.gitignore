@@ -1,3 +1,5 @@
 node_modules
 package-lock.json
 dbpw.js
+newrelic.js
+newrelic_agent.log
