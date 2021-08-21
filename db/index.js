@@ -1,9 +1,15 @@
 const mongoose = require('mongoose');
+const express = require('express');
+
+let app = express();
 mongoose.connect('mongodb://localhost/sdc');
 
 mongoose.connection.on('open', () => {
   console.log('connected to sdc database');
 })
+
+app.use(express.json());
+app.use(express.urlencoded({extended: true}));
 
 const qaSchema = new mongoose.Schema({
   id: String,
@@ -40,150 +46,167 @@ const indexSchema = new mongoose.Schema({
 
 const indexModel = mongoose.model('index', indexSchema, 'indexes');
 
-// new indexModel({type: 'answer', index: 6879307}).save()
-//       .then()
-//       .catch(console.log);
-
-// new indexModel({type:'question', index: 3518964}).save()
-//       .then()
-//       .catch(console.log);
-
-//6879306 current answer index
-
-module.exports.getQuestions = (productId) => {
-  return new Promise((resolve, reject) => {
-    qaModel.find({product_id: productId})
-      .then(resolve)
-      .catch(reject);
-  })
-};
-
-module.exports.getAnswers = (questionId) => {
-  return new Promise((resolve, reject) => {
-    qaModel.findOne({id: questionId})
-      .then((question) => resolve(question.answers))
-      .catch(reject);
-  })
-}
-
-module.exports.saveQuestion = (body, name, email, productId) => {
-  return new Promise((resolve, reject) => {
-    indexModel.findOne({type: 'question'})
-      .then((data) => {
-        let questionId = data.index;
-        new qaModel({
-          id: questionId.toString(),
-          'product_id': productId,
-          body,
-          'date_written': new Date().getTime(),
-          'asker_name': name,
-          'asker_email': email,
-          reported: '0',
-          helpful: '0',
-          answers: []
-        }).save()
-          .then(() => {
-            indexModel.updateOne({type: 'answer'}, {'$inc': {'index': 1}}, (err, data) => {
-              if (err) {
-                reject(err);
-              } else {
-                resolve()
-              }
-            })
-          })
-          .catch(reject);
-      })
-  });
-}
-
-module.exports.saveAnswer = (body, name, email, questionId) => {
-  return new Promise((resolve, reject) => {
-    let answerId;
-    indexModel.findOne({'type': 'answer'})
-      .then((data) => {
-        answerId = data.index;
-        qaModel.updateOne({'id': questionId}, {'$push': {answers: {
-          id: answerId.toString(),
-          'question_id': questionId,
-          body,
-          'date_written': new Date().getTime(),
-          'answerer_name': name,
-          'answerer_email': email,
-          reported: '0',
-          helpful: '0',
-          photos: []
-        }}}, (err, data) => {
-          if (err) {
-            reject(err);
-          } else {
-            indexModel.updateOne({type: 'answer'}, {'$inc': {'index': 1}}, (err, data) => {
-              if (err) {
-                reject(err);
-              } else {
-                resolve()
-              }
-            })
-          }
-        })
-      })
-      .catch(reject);
-  });
-}
-
-module.exports.helpfulQuestion = (questionId) => {
-  return new Promise((resolve, reject) => {
-    qaModel.findOne({id: questionId})
-      .then((question) => {
-        let newHelpful = Number(question.helpful) + 1;
-        console.log(newHelpful);
-        qaModel.updateOne({id: questionId}, {helpful: newHelpful.toString()}, (err, data) => {
-          if (err) {
-            reject(err)
-          } else {
-            resolve();
-          }
-        })
-      })
-      .catch(reject)
-  })
-}
-
-module.exports.reportQuestion = (questionId) => {
-  return new Promise((resolve, reject) => {
-    qaModel.updateOne({id: questionId}, {reported: '1'}, (err) => {
-      if (err) {
-        reject(err)
-      } else {
-        resolve();
-      }
+app.get('/qa/questions', (req, res) => {
+  qaModel.find({product_id: req.query.product_id.toString()})
+    .then((data) => {
+      res.send(data);
     })
-  })
-}
+    .catch((err) => {
+      console.log(err);
+      res.sendStatus(500, err);
+    });
 
-module.exports.helpfulAnswer = (answerId) => {
-  return new Promise ((resolve, reject) => {
-    qaModel.findOne({'answers.id': answerId})
-      .then((question) => {
-        let newHelpful = 0;
-        question.answers.forEach((answer) => {
-          if (answer.id === answerId) {
-            newHelpful = Number(answer.helpful) + 1
-          }
-        })
-        qaModel.updateOne({'answers.id': answerId}, {'$set': {'answers.$.helpful': newHelpful}})
-          .then(() => {
-            resolve('success')
+});
+
+app.get('/qa/questions/:questionId/answers', (req, res) => {
+  qaModel.findOne({id: req.params.questionId.toString()})
+    .then((question) => res.send(question.answers))
+    .catch((err) => {
+      console.log(err);
+      res.sendStatus(500, err);
+    });
+});
+
+app.post('/qa/questions', (req, res) => {
+  let body = req.body.body;
+  let name = req.body.name;
+  let email = req.body.email;
+  let productId = req.body['product_id'].toString();
+  indexModel.findOne({type: 'question'})
+    .then((data) => {
+      let questionId = data.index;
+      new qaModel({
+        id: questionId.toString(),
+        'product_id': productId,
+        body,
+        'date_written': new Date().getTime(),
+        'asker_name': name,
+        'asker_email': email,
+        reported: '0',
+        helpful: '0',
+        answers: []
+      }).save()
+        .then(() => {
+          indexModel.updateOne({type: 'question'}, {'$inc': {'index': 1}}, (err, data) => {
+            if (err) {
+              res.sendStatus(500, err);
+            } else {
+
+              res.send()
+            }
           })
-          .catch(reject);
-      })
-      .catch(reject);
-  })
-}
+        })
+        .catch((err) => {
+          res.sendStatus(500, err);
+        });
+    })
+});
 
-module.exports.reportAnswer = (answerId) => {
-  return new Promise((resolve, reject) => {
-    qaModel.updateOne({'answers.id': answerId}, {'$set': {'answers.$.reported': '1'}})
-      .then(resolve)
-      .catch(reject);
+app.post('/qa/questions/:questionId/answers', (req, res) => {
+  let answerId;
+  let body = req.body.body;
+  let name = req.body.name;
+  let email = req.body.email;
+  let questionId = req.params.questionId.toString();
+  indexModel.findOne({'type': 'answer'})
+    .then((data) => {
+      answerId = data.index;
+      qaModel.updateOne({'id': questionId}, {'$push': {answers: {
+        id: answerId.toString(),
+        'question_id': questionId,
+        body,
+        'date_written': new Date().getTime(),
+        'answerer_name': name,
+        'answerer_email': email,
+        reported: '0',
+        helpful: '0',
+        photos: []
+      }}}, (err, data) => {
+        if (err) {
+          res.sendStatus(500, err);
+        } else {
+          indexModel.updateOne({type: 'answer'}, {'$inc': {'index': 1}}, (err, data) => {
+            if (err) {
+              res.sendStatus(500, err);
+            } else {
+              res.send();
+            }
+          })
+        }
+      })
+    })
+    .catch((err) => {
+      res.sendStatus(500, err);
+    });
+  });
+
+app.put('/qa/questions/:questionId/helpful', (req, res) => {
+  let questionId = req.params.questionId.toString();
+  qaModel.findOne({id: questionId})
+    .then((question) => {
+      let newHelpful = Number(question.helpful) + 1;
+      qaModel.updateOne({id: questionId}, {helpful: newHelpful.toString()}, (err, data) => {
+        if (err) {
+          res.sendStatus(500, err);
+        } else {
+          res.send()
+        }
+      })
+    })
+    .catch((err) => {
+      res.sendStatus(500, err);
+    })
+});
+
+app.put('/qa/questions/:questionId/report', (req, res) => {
+  let questionId = req.params.questionId.toString();
+  qaModel.updateOne({id: questionId}, {reported: '1'}, (err) => {
+    if (err) {
+      res.sendStatus(500, err);
+    } else {
+      res.send();
+    }
   })
-}
+});
+
+app.put('/qa/answers/:answerId/helpful', (req, res) => {
+  let answerId = req.params.answerId.toString();
+  qaModel.findOne({'answers.id': answerId})
+    .then((question) => {
+      let newHelpful = 0;
+      question.answers.forEach((answer) => {
+        if (answer.id === answerId) {
+          newHelpful = Number(answer.helpful) + 1
+        }
+      })
+      qaModel.updateOne({'answers.id': answerId}, {'$set': {'answers.$.helpful': newHelpful}})
+        .then(() => {
+          res.send('success')
+        })
+        .catch((err) => {
+          res.sendStatus(500, err);
+        });
+    })
+    .catch((err) => {
+      res.sendStatus(500, err);
+    });
+});
+
+app.put('/qa/answers/:answerId/report', (req, res) => {
+  let answerId = req.params.answerId.toString();
+  qaModel.updateOne({'answers.id': answerId}, {'$set': {'answers.$.reported': '1'}})
+    .then(() => {
+      res.send('success');
+    })
+    .catch((err) => {
+      res.sendStatus(500, err);
+    });
+});
+
+app.listen(3000, (err) => {
+  if (err) {
+    console.log(err)
+  } else {
+    console.log('db server connected to port 3000');
+  }
+})
