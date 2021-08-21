@@ -1,11 +1,10 @@
-const pw = require('./dbpw.js');
 const { Pool } = require('pg');
 
 const pool = new Pool({
   user: 'postgres',
-  password: `${pw}`,
+  password: `sdcc432!`,
   database: 'products',
-  host: 'localhost',
+  host: '3.15.240.241',
   port: 5432,
 });
 

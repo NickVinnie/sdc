@@ -1,4 +1,5 @@
-require('newrelic');
+//require('newrelic');
+const cors = require('cors');
 const express = require('express');
 const app = express();
 const port = 3000;
@@ -159,7 +160,7 @@ const stylesObjectCreator = (stylesArray) => {
 //ROUTES
 
 //get product info by id
-app.get('/products/:id', (req, res) => {
+app.get('/products/:id', cors(), (req, res) => {
   const { id } = req.params;
   productQuery(id)
     .then(products => {
@@ -173,7 +174,7 @@ app.get('/products/:id', (req, res) => {
 })
 
 //get styles by product id
-app.get('/products/:id/styles', (req, res) => {
+app.get('/products/:id/styles', cors(), (req, res) => {
   const { id } = req.params;
   stylesQuery(id)
     .then(styles => {
@@ -182,7 +183,7 @@ app.get('/products/:id/styles', (req, res) => {
       }
       Promise.all(stylesObjectCreator(styles))
         .then(stylesResults => {
-          stylesObj.results = stylesResults
+          stylesObj.results = stylesResults;
           res.status(200);
           res.send(stylesObj);
         })
@@ -198,7 +199,7 @@ app.get('/products/:id/styles', (req, res) => {
 })
 
 //get related ids
-app.get('/products/:id/related', (req,res) => {
+app.get('/products/:id/related', cors(), (req, res) => {
   const { id } = req.params;
   relatedQuery(id)
     .then(relateds => {
@@ -214,6 +215,14 @@ app.get('/products/:id/related', (req,res) => {
       res.send(err);
     })
 })
+
+//load testing loader.io
+app.get('/loaderio-0d315de2bc92129b77d36711a397e244', (req, res) => {
+  res.status(200);
+  res.send('loaderio-0d315de2bc92129b77d36711a397e244');
+})
+
+app.use(cors());
 
 app.listen(port, () => {
   console.log(`listening on port ${port}`);
