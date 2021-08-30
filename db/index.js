@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/sdc');
+mongoose.connect('mongodb://Admin:313772@ec2-3-101-41-232.us-west-1.compute.amazonaws.com:27017/sdc', {useNewUrlParser: true});
 
 mongoose.connection.on('open', () => {
   console.log('connected to sdc database');

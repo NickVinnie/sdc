@@ -1,7 +1,8 @@
 const express = require('express');
-var app = express();
-
+const axios = require('axios');
 const db = require('./db/index.js');
+
+var app = express();
 
 app.use(express.json());
 app.use(express.urlencoded({extended: true}))
@@ -44,6 +45,7 @@ app.get('/qa/questions', (req, res) => {
     }
       res.send(formatted);
     })
+    .catch(console.log);
 });
 
 app.get('/qa/questions/:questionId/answers', (req, res) => {
